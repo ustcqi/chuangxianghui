@@ -23,11 +23,6 @@ class Flights(context: AppContext) extends Serializable{
     val trainingFile = "./data/flights/2007.csv"
     val testFile = "./data/flights/2007_test.csv"
 
-    case class Flight(Month: String, DayofMonth: String, DayOfWeek: String, DepTime: Int,
-                      CRSDepTime: Int, ArrTime: Int, CRSArrTime: Int, UniqueCarrier: String,
-                      ActualElapsedTime: Int, CRSElapsedTime: Int, AirTime: Int,
-                      ArrDelay: Double, DepDelay: Int, Origin: String, Distance: Int)
-
     val schema = StructType(
         StructField("Month", StringType, true)
                 :: StructField("DayOfMonth", StringType, true)
@@ -81,50 +76,36 @@ class Flights(context: AppContext) extends Serializable{
         val testDataDF = sqlContext.createDataFrame(testData, schema)
         (trainingDataDF, testDataDF)
     }
-
+    
     def train(trainingDataDF: DataFrame): CrossValidatorModel = {
-        val monthIndexer = new StringIndexer()
-                .setInputCol("Month")
+        val monthIndexer = new StringIndexer().setInputCol("Month")
                 .setOutputCol("MonthCat")
-        val dayOfMonthIndexer = new StringIndexer()
-                .setInputCol("DayOfMonth")
+        val dayOfMonthIndexer = new StringIndexer().setInputCol("DayOfMonth")
                 .setOutputCol("DayOfMonthCat")
-        val originIndexer = new StringIndexer()
-                .setInputCol("Origin")
+        val originIndexer = new StringIndexer().setInputCol("Origin")
                 .setOutputCol("OriginCat")
-        //UniqueCarrier -> OneHot
-        val uniqueCarrierIndexer = new StringIndexer()
-                .setInputCol("UniqueCarrier")
+        val uniqueCarrierIndexer = new StringIndexer().setInputCol("UniqueCarrier")
                 .setOutputCol("UniqueCarrierCat")
-        val uniqueCarrierEncoder = new OneHotEncoder()
-                .setInputCol("UniqueCarrierCat")
+        val uniqueCarrierEncoder = new OneHotEncoder().setInputCol("UniqueCarrierCat")
                 .setOutputCol("UniqueCarrierVec")
-
-        val dayOfWeekIndexer = new StringIndexer()
-                .setInputCol("DayOfWeek")
+        val dayOfWeekIndexer = new StringIndexer().setInputCol("DayOfWeek")
                 .setOutputCol("DayOfWeekCat")
         val dowOneHotEncoder = new OneHotEncoder()
                 .setInputCol("DayOfWeekCat")
                 .setOutputCol("DayOfWeekVec")
-
-
         val stdAssembler = new VectorAssembler()
                 .setInputCols(Array("MonthCat", "DayOfMonthCat", "DayOfWeekCat",
                     "UniqueCarrierCat", /*"OriginCat", "DepTime",*/ "CRSDepTime", "ArrTime",
                     "CRSArrTime", "ActualElapsedTime", "CRSElapsedTime", "AirTime",
                     "DepDelay", "Distance"))
                 .setOutputCol("stdAssemFeatures")
-        val stdSlice = new VectorSlicer()
-                .setInputCol("stdAssemFeatures")
+        val stdSlice = new VectorSlicer().setInputCol("stdAssemFeatures")
                 .setOutputCol("stdSliceFeatures")
                 .setNames(Array("MonthCat", "DayOfMonthCat", "DayOfWeekCat", "UniqueCarrierCat",
                     /*"OriginCat", "DepTime",*/"CRSDepTime", "ArrTime", "CRSArrTime",
                     "ActualElapsedTime", "CRSElapsedTime", "AirTime", "DepDelay", "Distance"))
-        val stdScaler = new StandardScaler()
-                .setInputCol("stdSliceFeatures")
-                .setOutputCol("stdFeatures")
-                .setWithStd(true)
-                .setWithMean(true)
+        val stdScaler = new StandardScaler().setInputCol("stdSliceFeatures")
+                .setOutputCol("stdFeatures").setWithStd(true).setWithMean(true)
 
         val minMaxAssembler = new VectorAssembler()
                 .setInputCols(Array("OriginCat", "DepTime"))
@@ -206,7 +187,6 @@ object Flights{
         val testFile = flights.testFile
         val (trainingDataDF, testDataDF) = flights.getData(trainingFile, testFile)
         val cvModel = flights.train(trainingDataDF)
-        //predictedDF.select("features", "prediction", "probability").show()
         val accuracy = flights.evaluate(cvModel, testDataDF)
         println("Error on test data = " + (1.0 - accuracy))
         //println(cvModel.getEstimatorParamMaps.zip(cvModel.avgMetrics).maxBy(_._2)._1)
