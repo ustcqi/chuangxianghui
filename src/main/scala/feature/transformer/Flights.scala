@@ -45,7 +45,8 @@ class Flights(context: AppContext) extends Serializable{
 
     def getMinuteOfDay(t : String) : Int = {
         val time = t.toInt
-        time/100 * 60 + time%100
+        //time/100 * 60 + time%100
+        time
     }
 
     def getData(trainingFile: String, testFile: String): (DataFrame, DataFrame) ={
