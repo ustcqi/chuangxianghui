@@ -43,6 +43,7 @@ class Flights(context: AppContext) extends Serializable{
                 :: StructField("Distance", IntegerType, true)
                 :: Nil)
 
+    //year =>
     def getMinuteOfDay(t : String) : Int = {
         val time = t.toInt
         //time/100 * 60 + time%100
@@ -77,7 +78,7 @@ class Flights(context: AppContext) extends Serializable{
         val testDataDF = sqlContext.createDataFrame(testData, schema)
         (trainingDataDF, testDataDF)
     }
-    
+
     def train(trainingDataDF: DataFrame): CrossValidatorModel = {
         val monthIndexer = new StringIndexer().setInputCol("Month")
                 .setOutputCol("MonthCat")
@@ -85,15 +86,18 @@ class Flights(context: AppContext) extends Serializable{
                 .setOutputCol("DayOfMonthCat")
         val originIndexer = new StringIndexer().setInputCol("Origin")
                 .setOutputCol("OriginCat")
+
         val uniqueCarrierIndexer = new StringIndexer().setInputCol("UniqueCarrier")
                 .setOutputCol("UniqueCarrierCat")
         val uniqueCarrierEncoder = new OneHotEncoder().setInputCol("UniqueCarrierCat")
                 .setOutputCol("UniqueCarrierVec")
+
         val dayOfWeekIndexer = new StringIndexer().setInputCol("DayOfWeek")
                 .setOutputCol("DayOfWeekCat")
         val dowOneHotEncoder = new OneHotEncoder()
                 .setInputCol("DayOfWeekCat")
                 .setOutputCol("DayOfWeekVec")
+
         val stdAssembler = new VectorAssembler()
                 .setInputCols(Array("MonthCat", "DayOfMonthCat", "DayOfWeekCat",
                     "UniqueCarrierCat", /*"OriginCat", "DepTime",*/ "CRSDepTime", "ArrTime",
@@ -133,6 +137,7 @@ class Flights(context: AppContext) extends Serializable{
         val lr = new LogisticRegression()
                 .setLabelCol("label")
                 .setFeaturesCol("features")
+
         val lrPipeline = new Pipeline()
                 .setStages(Array(monthIndexer, dayOfMonthIndexer,  originIndexer,
                     uniqueCarrierIndexer, uniqueCarrierEncoder,
@@ -142,16 +147,16 @@ class Flights(context: AppContext) extends Serializable{
                     assembler, binarizer, lr))
 
         val paramGrid = new ParamGridBuilder()
-                .addGrid(lr.regParam, Array(0.02, 0.05, 0.1))
-                .addGrid(lr.elasticNetParam, Array(0.02, 0.1, 0.3))
-                .addGrid(lr.maxIter, Array(10, 20))
+                .addGrid(lr.regParam, Array(0.001, 0.0012))
+                .addGrid(lr.elasticNetParam, Array(0.38, 0.4))
+                .addGrid(lr.maxIter, Array(25, 30))
                 .build()
 
         val cv = new CrossValidator()
                 .setEstimator(lrPipeline)
                 .setEvaluator(new BinaryClassificationEvaluator)
                 .setEstimatorParamMaps(paramGrid)
-                .setNumFolds(10)
+                .setNumFolds(5)
         val cvModel = cv.fit(trainingDataDF)
         cvModel
     }
@@ -195,4 +200,36 @@ object Flights{
         context.sc.stop()
     }
 }
+/*
+Error on test data = 0.14658320292123106
+Best Estimator Parameters:
+{
+    logreg_f258dcb73242-elasticNetParam: 0.3,
+    logreg_f258dcb73242-maxIter: 20,
+    logreg_f258dcb73242-regParam: 0.02
+}
 
+Error on test data = 0.14658320292123106
+Best Estimator Parameters:
+{
+	logreg_0701edd0e3e9-elasticNetParam: 0.3,
+	logreg_0701edd0e3e9-maxIter: 20,
+	logreg_0701edd0e3e9-regParam: 0.02
+}
+
+Error on test data = 0.041210224308815824
+Best Estimator Parameters:
+{
+	logreg_21bf1374a6e4-elasticNetParam: 0.5,
+	logreg_21bf1374a6e4-maxIter: 30,
+	logreg_21bf1374a6e4-regParam: 0.001
+}
+
+Error on test data = 0.03651538862806469
+Best Estimator Parameters:
+{
+	logreg_95ce1e781fa4-elasticNetParam: 0.4,
+	logreg_95ce1e781fa4-maxIter: 30,
+	logreg_95ce1e781fa4-regParam: 0.001
+}
+*/
