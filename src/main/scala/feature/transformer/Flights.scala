@@ -51,9 +51,9 @@ class Flights(context: AppContext) extends Serializable{
     }
 
     def getData(trainingFile: String, testFile: String): (DataFrame, DataFrame) ={
-        val flight2007Rdd = sc.textFile(trainingFile)
-        val header = flight2007Rdd.first
-        val trainingData = flight2007Rdd.filter(x => x != header)
+        val trainingRdd = sc.textFile(trainingFile)
+        val header = trainingRdd.first
+        val trainingData = trainingRdd.filter(x => x != header)
                 .map(x => x.split(","))
                 .filter(x => x(21) == "0")
                 .filter(x => x(17) == "ORD")
@@ -64,9 +64,9 @@ class Flights(context: AppContext) extends Serializable{
                 )
         val trainingDataDF = sqlContext.createDataFrame(trainingData, schema)
 
-        val flight2008Rdd = sc.textFile(testFile)
-        val testheader = flight2008Rdd.first
-        val testData = flight2008Rdd.filter(x => x != testheader)
+        val testRdd = sc.textFile(testFile)
+        val testheader = testRDD.first
+        val testData = testRdd.filter(x => x != testheader)
                 .map(x => x.split(","))
                 .filter(x => x(21) == "0")
                 .filter(x => x(17) == "ORD")
